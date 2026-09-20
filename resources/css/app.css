@@ -1,0 +1,126 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../views/**/*.blade.php';
+@source '../js/**/*.js';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-marca: #1d4ed8;
+}
+
+@layer base {
+    button,
+    a,
+    input,
+    select,
+    textarea {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    [hidden] {
+        display: none !important;
+    }
+}
+
+@layer components {
+    .botao-primario {
+        @apply inline-flex min-h-10 items-center gap-2 rounded-md border border-blue-700 bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:border-blue-800 hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-60;
+    }
+
+    .botao-secundario {
+        @apply inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600;
+    }
+
+    .botao-icone {
+        @apply inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600;
+    }
+
+    .botao-fechar {
+        @apply inline-flex size-9 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600;
+    }
+
+    .botao-acao,
+    .botao-excluir {
+        @apply inline-flex min-h-9 items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2;
+    }
+
+    .botao-acao {
+        @apply border-slate-300 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 focus-visible:outline-blue-600;
+    }
+
+    .botao-excluir {
+        @apply border-transparent bg-transparent text-red-700 hover:border-red-200 hover:bg-red-50 focus-visible:outline-red-600;
+    }
+
+    .campo-data {
+        @apply h-10 w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition sm:w-auto focus:border-blue-600 focus:ring-3 focus:ring-blue-100;
+    }
+
+    .cartao-resumo {
+        @apply rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm;
+    }
+
+    .rotulo-resumo {
+        @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
+    }
+
+    .valor-resumo {
+        @apply mt-1.5 font-mono text-2xl font-bold tracking-tight text-slate-900;
+    }
+
+    .etiqueta-trabalho,
+    .etiqueta-hora-extra {
+        @apply inline-flex w-fit rounded-full border px-2.5 py-1 text-xs font-semibold;
+    }
+
+    .etiqueta-trabalho {
+        @apply border-blue-200 bg-blue-50 text-blue-800;
+    }
+
+    .etiqueta-hora-extra {
+        @apply border-amber-200 bg-amber-50 text-amber-800;
+    }
+
+    .rotulo-detalhe {
+        @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
+    }
+
+    .texto-detalhe {
+        @apply mt-1 text-sm leading-5 text-slate-700;
+    }
+
+    .grupo-campo {
+        @apply grid gap-1.5 sm:grid-cols-[9.5rem_minmax(0,1fr)] sm:items-center sm:gap-4;
+    }
+
+    .rotulo-campo {
+        @apply text-sm font-semibold text-slate-700 sm:text-right;
+    }
+
+    .rotulo-campo span {
+        @apply text-red-600;
+    }
+
+    .conteudo-campo {
+        @apply min-w-0;
+    }
+
+    .campo-formulario {
+        @apply block min-h-10 w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 shadow-xs outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-3 focus:ring-blue-100;
+    }
+
+    select.campo-formulario {
+        @apply py-0;
+    }
+
+    .campo-invalido {
+        @apply border-red-400 bg-red-50 focus:border-red-600 focus:ring-red-100;
+    }
+
+    .mensagem-erro {
+        @apply mt-1.5 text-xs font-medium text-red-700;
+    }
+}
