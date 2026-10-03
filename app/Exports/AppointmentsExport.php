@@ -30,32 +30,34 @@ class AppointmentsExport implements FromQuery, WithColumnWidths, WithHeadings, W
     public function headings(): array
     {
         return [
-            'Data',
-            'Duração',
+            'Recurso Reservável',
             'Projeto',
-            'Tarefa do projeto',
-            'Ocorrência',
+            'Tarefa do Projeto',
+            'Início',
+            'Fim',
+            'Duração',
+            'Tipo de Entrada',
             'Descrição interna',
-            'Tipo de apontamento',
-            'Responsável',
+            'Proprietário',
         ];
     }
 
     /**
      * @param  Appointment  $appointment
-     * @return array<int, string>
+     * @return array<int, string|float>
      */
     public function map(mixed $appointment): array
     {
         return [
-            $appointment->date->format('d/m/Y'),
-            $appointment->formattedDuration(),
+            'Brenda Siedler',
             $this->safeText($appointment->project->name),
             $this->safeText($appointment->project_task),
-            $this->safeText($appointment->occurrence),
+            $appointment->date->format('d/m/Y'),
+            $appointment->date->format('d/m/Y'),
+            round($appointment->duration_minutes / 60, 2),
+            $appointment->entry_type === 'overtime' ? 'Horas Extras' : 'Trabalho',
             $this->safeText($appointment->internal_description),
-            $appointment->entryTypeLabel(),
-            $this->safeText($appointment->owner),
+            'Brenda Siedler',
         ];
     }
 
@@ -65,14 +67,15 @@ class AppointmentsExport implements FromQuery, WithColumnWidths, WithHeadings, W
     public function columnWidths(): array
     {
         return [
-            'A' => 13,
-            'B' => 11,
-            'C' => 24,
-            'D' => 28,
-            'E' => 32,
-            'F' => 48,
-            'G' => 22,
-            'H' => 24,
+            'A' => 22,
+            'B' => 26,
+            'C' => 28,
+            'D' => 15,
+            'E' => 15,
+            'F' => 13,
+            'G' => 20,
+            'H' => 48,
+            'I' => 22,
         ];
     }
 
@@ -89,7 +92,7 @@ class AppointmentsExport implements FromQuery, WithColumnWidths, WithHeadings, W
                     'startColor' => ['rgb' => '1D4ED8'],
                 ],
             ],
-            'A:H' => [
+            'A:I' => [
                 'alignment' => [
                     'vertical' => 'top',
                     'wrapText' => true,

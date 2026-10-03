@@ -11,6 +11,8 @@ if (modal) {
     const existingProjectFields = document.querySelector('#existing-project-fields');
     const newProjectFields = document.querySelector('#new-project-fields');
     const durationField = document.querySelector('#duration');
+    const projectSearch = document.querySelector('[data-project-search]');
+    const projectOptions = [...projectSelect.options].map((option) => ({ value: option.value, label: option.textContent }));
     let triggerToRestore = null;
 
     const field = (name) => form.elements.namedItem(name);
@@ -33,6 +35,8 @@ if (modal) {
     };
 
     const fillForm = (values = {}) => {
+        projectSearch.value = '';
+        projectSelect.replaceChildren(...projectOptions.map(({ value, label }) => new Option(label, value)));
         field('date').value = values.date ?? window.agendaData.dataSelecionada;
         field('duration').value = values.duration ?? '';
         field('project_task').value = values.project_task ?? '';
@@ -104,6 +108,39 @@ if (modal) {
         projectSelect.focus();
     });
 
+    projectSearch.addEventListener('input', () => {
+        const selectedValue = projectSelect.value;
+        const search = projectSearch.value.trim().toLocaleLowerCase('pt-BR');
+        const matches = projectOptions.filter(({ value, label }) => ! value || label.toLocaleLowerCase('pt-BR').includes(search));
+        projectSelect.replaceChildren(...matches.map(({ value, label }) => new Option(label, value)));
+        projectSelect.value = matches.some(({ value }) => value === selectedValue) ? selectedValue : '';
+
+        if (search && matches.filter(({ value }) => value).length === 1) {
+            projectSelect.value = matches.find(({ value }) => value)?.value ?? '';
+        }
+    });
+
+    const normalizeDuration = () => {
+        const input = durationField.value.trim().replace(',', '.');
+        if (/^\d{1,3}:\d{1,2}$/.test(input)) {
+            const [hours, minutes] = input.split(':').map(Number);
+            if (minutes < 60) durationField.value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        } else if (/^\d{1,3}(\.\d{1,2})?$/.test(input)) {
+            const decimalHours = input.includes('.') ? Number(input) : Number(input) / 100;
+            const totalMinutes = Math.round(decimalHours * 60);
+            durationField.value = `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+        }
+    };
+    durationField.addEventListener('blur', normalizeDuration);
+
+    form.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && event.target.matches('input:not([type="date"]), select')) {
+            event.preventDefault();
+            normalizeDuration();
+            form.requestSubmit();
+        }
+    });
+
     modal.addEventListener('click', (event) => {
         if (event.target === modal) {
             closeModal();
@@ -117,6 +154,7 @@ if (modal) {
     });
 
     form.addEventListener('submit', () => {
+        normalizeDuration();
         submitButton.disabled = true;
         submitButton.textContent = appointmentIdField.value ? 'Atualizando...' : 'Salvando...';
     });
@@ -138,3 +176,61 @@ if (modal) {
         openModal(values.id ? 'edit' : 'create', values);
     }
 }
+
+document.querySelectorAll('[data-confirm-delete]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+        if (! window.confirm(form.dataset.confirmDelete)) event.preventDefault();
+    });
+});
+
+document.querySelectorAll('[data-auto-submit]').forEach((select) => {
+    select.addEventListener('change', () => select.form.requestSubmit());
+});
+
+document.querySelectorAll('#notes details[id^="note-"]').forEach((note) => {
+    const applyFilter = () => {
+        const priority = note.querySelector('[data-priority-filter]').value;
+        const search = note.querySelector('[data-task-search]').value.trim().toLocaleLowerCase('pt-BR');
+        note.querySelectorAll('[data-kanban-card]').forEach((card) => {
+            card.hidden = Boolean((priority && card.dataset.priority !== priority) || (search && ! card.dataset.search.includes(search)));
+        });
+    };
+    note.querySelector('[data-priority-filter]').addEventListener('change', applyFilter);
+    note.querySelector('[data-task-search]').addEventListener('input', applyFilter);
+
+    let draggedCard = null;
+    note.querySelectorAll('[data-kanban-card][draggable="true"]').forEach((card) => {
+        card.addEventListener('dragstart', (event) => {
+            draggedCard = card;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', card.dataset.moveUrl);
+        });
+        card.addEventListener('dragend', () => { draggedCard = null; });
+    });
+
+    note.querySelectorAll('[data-kanban-column]').forEach((column) => {
+        column.addEventListener('dragover', (event) => {
+            if (draggedCard) event.preventDefault();
+        });
+        column.addEventListener('drop', async (event) => {
+            if (! draggedCard) return;
+            event.preventDefault();
+            const status = column.dataset.kanbanColumn;
+            try {
+                const response = await fetch(draggedCard.dataset.moveUrl, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({ status }),
+                });
+                if (! response.ok) throw new Error('Falha ao mover pendência');
+                window.location.search = new URLSearchParams({ date: window.agendaData.dataSelecionada, notes: note.id.replace('note-', '') });
+            } catch {
+                window.alert('Não foi possível mover a pendência. Tente novamente.');
+            }
+        });
+    });
+});

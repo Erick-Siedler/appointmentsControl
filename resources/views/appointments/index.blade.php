@@ -186,6 +186,187 @@
                 </div>
             @endif
         </section>
+
+        <section id="notes" class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" aria-labelledby="daily-notes-title">
+            <div class="border-b border-slate-200 px-4 py-5 sm:px-5">
+                <h2 id="daily-notes-title" class="text-lg font-semibold text-slate-950">Anotações do dia</h2>
+                <p class="mt-0.5 text-sm text-slate-500">Registre observações e acompanhe as pendências de cada anotação.</p>
+            </div>
+
+            <div class="space-y-5 p-4 sm:p-5">
+                @if ($errors->notes->any() || $errors->tasks->any())
+                    <div role="alert" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                        @foreach ($errors->notes->all() as $message)<p>{{ $message }}</p>@endforeach
+                        @foreach ($errors->tasks->all() as $message)<p>{{ $message }}</p>@endforeach
+                    </div>
+                @endif
+                <form method="POST" action="{{ route('daily-notes.store') }}" class="space-y-3">
+                    @csrf
+                    <input type="hidden" name="date" value="{{ $selectedDate->toDateString() }}">
+                    <label for="note-body" class="block text-sm font-semibold text-slate-700">Nova anotação</label>
+                    <textarea id="note-body" name="body" rows="3" maxlength="10000" required class="campo-formulario resize-y" placeholder="Escreva uma observação para este dia...">{{ old('body') }}</textarea>
+                    @error('body', 'notes') <p class="mensagem-erro">{{ $message }}</p> @enderror
+                    <button type="submit" class="botao-primario">Adicionar Anotação</button>
+                </form>
+
+                @forelse ($dailyNotes as $note)
+                    @php($canEditNote = $noteAuthorToken === $note->author_token)
+                    <details id="note-{{ $note->id }}" class="rounded-lg border border-slate-200 bg-slate-50" @if (request('notes') == $note->id) open @endif>
+                        <summary class="cursor-pointer list-none px-4 py-4 focus-visible:outline-2 focus-visible:outline-blue-600 sm:px-5">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <p class="max-w-3xl whitespace-pre-line text-sm leading-6 text-slate-800">{{ $note->body }}</p>
+                                <span class="shrink-0 text-xs font-medium text-slate-500">{{ $note->created_at->format('d/m/Y \à\s H:i') }}</span>
+                            </div>
+                            <span class="mt-2 block text-xs font-semibold text-blue-700">{{ $note->pendingTasks->count() }} pendência(s) · Abrir checklist Kanban</span>
+                        </summary>
+
+                        <div class="space-y-5 border-t border-slate-200 bg-white p-4 sm:p-5">
+                            @if ($canEditNote)
+                                <div class="flex flex-wrap gap-3">
+                                    <details class="min-w-0 flex-1">
+                                        <summary class="cursor-pointer text-sm font-semibold text-blue-700">Editar anotação</summary>
+                                        <form method="POST" action="{{ route('daily-notes.update', $note) }}" class="mt-2 space-y-2">
+                                            @csrf
+                                            @method('PUT')
+                                            <textarea name="body" rows="3" maxlength="10000" required class="campo-formulario resize-y">{{ $note->body }}</textarea>
+                                            <button type="submit" class="botao-secundario">Salvar anotação</button>
+                                        </form>
+                                    </details>
+                                    <form method="POST" action="{{ route('daily-notes.destroy', $note) }}" data-confirm-delete="Excluir esta anotação e todas as suas pendências?">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="botao-excluir">Excluir anotação</button>
+                                    </form>
+                                </div>
+                            @endif
+
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                                <div>
+                                    <h3 class="font-semibold text-slate-900">Checklist de pendências</h3>
+                                    <p class="text-xs text-slate-500">Arraste os cards entre colunas ou altere o status no próprio card.</p>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <label class="text-xs font-semibold text-slate-600">Prioridade
+                                        <select class="campo-formulario mt-1" data-priority-filter>
+                                            <option value="">Todas</option>
+                                            @foreach ($taskPriorities as $key => $label)
+                                                <option value="{{ $key }}">{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                    </label>
+                                    <label class="text-xs font-semibold text-slate-600">Pesquisar
+                                        <input type="search" class="campo-formulario mt-1" placeholder="Palavra-chave" data-task-search>
+                                    </label>
+                                </div>
+                            </div>
+
+                            @if ($canEditNote)
+                                <details class="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                                    <summary class="cursor-pointer text-sm font-semibold text-blue-700">+ Nova pendência</summary>
+                                    <form method="POST" action="{{ route('pending-tasks.store', $note) }}" class="mt-3 grid gap-3 sm:grid-cols-2">
+                                        @csrf
+                                        <label class="text-sm font-medium text-slate-700 sm:col-span-2">Título <input name="title" required maxlength="255" class="campo-formulario mt-1"></label>
+                                        <label class="text-sm font-medium text-slate-700 sm:col-span-2">Descrição <textarea name="description" rows="2" maxlength="5000" class="campo-formulario mt-1"></textarea></label>
+                                        <label class="text-sm font-medium text-slate-700">Status <select name="status" class="campo-formulario mt-1">@foreach ($taskStatuses as $key => $label)<option value="{{ $key }}">{{ $label }}</option>@endforeach</select></label>
+                                        <label class="text-sm font-medium text-slate-700">Prioridade <select name="priority" class="campo-formulario mt-1">@foreach ($taskPriorities as $key => $label)<option value="{{ $key }}" @selected($key === 'normal')>{{ $label }}</option>@endforeach</select></label>
+                                        <label class="text-sm font-medium text-slate-700">Vencimento <input name="due_date" type="date" class="campo-formulario mt-1"></label>
+                                        <label class="text-sm font-medium text-slate-700">Responsável <input name="assignee" maxlength="255" class="campo-formulario mt-1"></label>
+                                        <button type="submit" class="botao-primario w-fit sm:col-span-2">Adicionar pendência</button>
+                                    </form>
+                                </details>
+                            @endif
+
+                            <div class="flex gap-3 overflow-x-auto pb-3" data-kanban-board>
+                                @foreach ($taskStatuses as $statusKey => $statusLabel)
+                                    <section class="w-72 shrink-0 rounded-lg border border-slate-200 bg-slate-50" aria-label="{{ $statusLabel }}" data-kanban-column="{{ $statusKey }}">
+                                        <div class="flex items-center justify-between border-b border-slate-200 px-3 py-2.5">
+                                            <h4 class="text-sm font-semibold text-slate-800">{{ $statusLabel }}</h4>
+                                            <span class="text-xs text-slate-500">{{ $note->pendingTasks->where('status', $statusKey)->count() }}</span>
+                                        </div>
+                                        <div class="min-h-24 space-y-2 p-2" data-kanban-dropzone>
+                                            @foreach ($note->pendingTasks->where('status', $statusKey) as $task)
+                                                <article class="rounded-md border border-slate-200 bg-white p-3 shadow-sm" data-kanban-card data-priority="{{ $task->priority }}" data-search="{{ Str::lower($task->title.' '.$task->description.' '.$task->assignee) }}" data-move-url="{{ route('pending-tasks.move', $task) }}" @if ($canEditNote) draggable="true" @endif>
+                                                    <div class="flex items-start justify-between gap-2">
+                                                        <h5 class="text-sm font-semibold text-slate-900">{{ $task->title }}</h5>
+                                                        <span class="rounded-full px-2 py-0.5 text-xs font-semibold {{ ['low' => 'bg-emerald-100 text-emerald-800', 'normal' => 'bg-blue-100 text-blue-800', 'high' => 'bg-orange-100 text-orange-800', 'urgent' => 'bg-red-100 text-red-800'][$task->priority] }}">{{ $taskPriorities[$task->priority] }}</span>
+                                                    </div>
+                                                    @if ($task->description)<p class="mt-2 break-words whitespace-pre-line text-xs leading-5 text-slate-600">{{ $task->description }}</p>@endif
+                                                    @if ($task->due_date || $task->assignee)
+                                                        <p class="mt-2 text-xs text-slate-500">@if ($task->due_date) Vence {{ $task->due_date->format('d/m/Y') }} @endif @if ($task->assignee) · {{ $task->assignee }} @endif</p>
+                                                    @endif
+                                                    <p class="mt-2 text-xs font-medium text-slate-500">{{ $task->checklistItems->where('is_done', true)->count() }}/{{ $task->checklistItems->count() }} subtarefas</p>
+                                                    @if ($canEditNote)
+                                                        <form method="POST" action="{{ route('pending-tasks.move', $task) }}" class="mt-2">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <label class="sr-only" for="task-status-{{ $task->id }}">Status de {{ $task->title }}</label>
+                                                            <select id="task-status-{{ $task->id }}" name="status" class="campo-formulario text-xs" data-auto-submit>
+                                                                @foreach ($taskStatuses as $key => $label)<option value="{{ $key }}" @selected($task->status === $key)>{{ $label }}</option>@endforeach
+                                                            </select>
+                                                        </form>
+                                                    @endif
+                                                    <details class="mt-2 border-t border-slate-100 pt-2">
+                                                        <summary class="cursor-pointer text-xs font-semibold text-blue-700">Detalhes e subtarefas</summary>
+                                                        @if ($canEditNote)
+                                                            <form method="POST" action="{{ route('pending-tasks.update', $task) }}" class="mt-2 space-y-2">
+                                                                @csrf
+                                                                @method('PATCH')
+                                                                <label class="block text-xs">Título <input name="title" value="{{ $task->title }}" required maxlength="255" class="campo-formulario mt-1"></label>
+                                                                <label class="block text-xs">Descrição <textarea name="description" rows="3" maxlength="5000" class="campo-formulario mt-1">{{ $task->description }}</textarea></label>
+                                                                <label class="block text-xs">Prioridade <select name="priority" class="campo-formulario mt-1">@foreach ($taskPriorities as $key => $label)<option value="{{ $key }}" @selected($task->priority === $key)>{{ $label }}</option>@endforeach</select></label>
+                                                                <label class="block text-xs">Vencimento <input name="due_date" type="date" value="{{ $task->due_date?->toDateString() }}" class="campo-formulario mt-1"></label>
+                                                                <label class="block text-xs">Responsável <input name="assignee" value="{{ $task->assignee }}" maxlength="255" class="campo-formulario mt-1"></label>
+                                                                <input type="hidden" name="status" value="{{ $task->status }}">
+                                                                <button type="submit" class="botao-secundario">Salvar card</button>
+                                                            </form>
+                                                        @endif
+                                                        <ul class="mt-3 space-y-2">
+                                                            @foreach ($task->checklistItems as $item)
+                                                                <li class="flex items-start gap-2 text-xs text-slate-700">
+                                                                    @if ($canEditNote)
+                                                                        <form method="POST" action="{{ route('checklist-items.update', $item) }}">
+                                                                            @csrf @method('PATCH')
+                                                                            <input type="hidden" name="is_done" value="{{ $item->is_done ? 0 : 1 }}">
+                                                                            <button type="submit" class="size-5 rounded border border-slate-300" aria-label="{{ $item->is_done ? 'Desmarcar' : 'Concluir' }} {{ $item->text }}">{{ $item->is_done ? '✓' : '' }}</button>
+                                                                        </form>
+                                                                    @else
+                                                                        <span aria-hidden="true">{{ $item->is_done ? '✓' : '○' }}</span>
+                                                                    @endif
+                                                                    <span class="flex-1 {{ $item->is_done ? 'line-through text-slate-400' : '' }}">{{ $item->text }}</span>
+                                                                    @if ($canEditNote)
+                                                                        <form method="POST" action="{{ route('checklist-items.destroy', $item) }}">
+                                                                            @csrf @method('DELETE')
+                                                                            <button type="submit" class="text-red-600" aria-label="Excluir {{ $item->text }}">×</button>
+                                                                        </form>
+                                                                    @endif
+                                                                </li>
+                                                            @endforeach
+                                                        </ul>
+                                                        @if ($canEditNote)
+                                                            <form method="POST" action="{{ route('checklist-items.store', $task) }}" class="mt-3 flex gap-1">
+                                                                @csrf
+                                                                <input name="text" maxlength="255" required class="campo-formulario min-w-0" placeholder="Nova subtarefa" aria-label="Nova subtarefa">
+                                                                <button type="submit" class="botao-secundario">+</button>
+                                                            </form>
+                                                            <form method="POST" action="{{ route('pending-tasks.destroy', $task) }}" class="mt-3" data-confirm-delete="Excluir esta pendência?">
+                                                                @csrf @method('DELETE')
+                                                                <button type="submit" class="text-xs font-semibold text-red-700">Excluir pendência</button>
+                                                            </form>
+                                                        @endif
+                                                    </details>
+                                                </article>
+                                            @endforeach
+                                        </div>
+                                    </section>
+                                @endforeach
+                            </div>
+                        </div>
+                    </details>
+                @empty
+                    <p class="rounded-lg border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500">Nenhuma anotação nesta data.</p>
+                @endforelse
+            </div>
+        </section>
     </main>
 
     <div id="appointment-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/55 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title" data-store-url="{{ route('appointments.store') }}" data-update-url="{{ route('appointments.update', ['appointment' => '__ID__']) }}">
@@ -227,7 +408,7 @@
                         <label for="duration" class="rotulo-campo">Duração <span aria-hidden="true">*</span></label>
                         <div class="conteudo-campo">
                             <input id="duration" name="duration" type="text" inputmode="numeric" autocomplete="off" placeholder="02:30" pattern="\d{1,3}:[0-5]\d" class="campo-formulario @error('duration') campo-invalido @enderror" value="{{ old('duration') }}" required>
-                            <p class="mt-1.5 text-xs text-slate-500">Use horas e minutos no formato HH:MM.</p>
+                            <p class="mt-1.5 text-xs text-slate-500">Use HH:MM ou horas decimais. Ex.: 125 ou 1,25 vira 01:15.</p>
                             @error('duration') <p class="mensagem-erro">{{ $message }}</p> @enderror
                         </div>
                     </div>
@@ -236,6 +417,8 @@
                         <label for="project-id" class="rotulo-campo sm:pt-2.5">Projeto <span aria-hidden="true">*</span></label>
                         <div class="conteudo-campo">
                             <div id="existing-project-fields">
+                                <label for="project-search" class="sr-only">Buscar projeto</label>
+                                <input id="project-search" type="search" autocomplete="off" class="campo-formulario mb-2" placeholder="Buscar projeto pelo nome" data-project-search>
                                 <select id="project-id" name="project_id" class="campo-formulario @error('project_id') campo-invalido @enderror">
                                     <option value="">Selecione um projeto</option>
                                     @foreach ($projects as $project)
@@ -259,7 +442,8 @@
                     <div class="grupo-campo">
                         <label for="project-task" class="rotulo-campo">Tarefa do projeto</label>
                         <div class="conteudo-campo">
-                            <input id="project-task" name="project_task" type="text" maxlength="255" class="campo-formulario @error('project_task') campo-invalido @enderror" value="{{ old('project_task') }}" placeholder="Atividade realizada">
+                            <input id="project-task" name="project_task" type="text" list="recent-project-tasks" maxlength="255" class="campo-formulario @error('project_task') campo-invalido @enderror" value="{{ old('project_task') }}" placeholder="Atividade realizada">
+                            <datalist id="recent-project-tasks">@foreach ($recentTasks as $recentTask)<option value="{{ $recentTask }}">@endforeach</datalist>
                             @error('project_task') <p class="mensagem-erro">{{ $message }}</p> @enderror
                         </div>
                     </div>

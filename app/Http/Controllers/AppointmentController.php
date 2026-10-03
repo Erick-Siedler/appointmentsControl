@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\SaveAppointmentRequest;
 use App\Models\Appointment;
+use App\Models\DailyNote;
+use App\Models\PendingTask;
 use App\Models\Project;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -35,7 +37,18 @@ class AppointmentController extends Controller
 
         return view('appointments.index', [
             'appointments' => $appointments,
+            'dailyNotes' => DailyNote::query()
+                ->with(['pendingTasks' => fn ($query) => $query->with('checklistItems')->orderBy('position')->oldest('id')])
+                ->whereDate('date', $selectedDate->toDateString())
+                ->oldest('created_at')
+                ->oldest('id')
+                ->get(),
+            'noteAuthorToken' => $request->session()->get('note_author_token'),
+            'taskStatuses' => PendingTask::STATUSES,
+            'taskPriorities' => PendingTask::PRIORITIES,
             'projects' => Project::query()->orderBy('name')->get(['id', 'name']),
+            'recentTasks' => Appointment::query()->whereNotNull('project_task')->where('project_task', '!=', '')
+                ->latest('id')->limit(100)->pluck('project_task')->unique()->values(),
             'selectedDate' => $selectedDate,
             'previousDate' => $selectedDate->subDay()->toDateString(),
             'nextDate' => $selectedDate->addDay()->toDateString(),
